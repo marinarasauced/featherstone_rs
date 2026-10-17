@@ -1,0 +1,9 @@
+[package]
+name = "featherstone-algebra"
+description = "Algebra of rigid body dynamics ; i.e., a generic float type, the spatial vector algebra, and the symmetric 3x3 and 6x6 matrices with their LDLT factorizations."
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true

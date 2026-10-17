@@ -1,0 +1,10 @@
+
+/target/
+
+# device artifacts
+*.ptx
+*.ll
+*.ltoir
+*.cubin
+*.target
+*.options

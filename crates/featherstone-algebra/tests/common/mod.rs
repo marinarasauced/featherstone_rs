@@ -2,9 +2,9 @@
 
 #![allow(dead_code)]
 
-use robot_algebra::float::Float;
-use robot_algebra::linalg::Sym3;
-use robot_algebra::spatial::{Force, Mat3, Motion, Quat, RigidInertia, Vec3, Xform};
+use featherstone_algebra::float::Float;
+use featherstone_algebra::linalg::Sym3;
+use featherstone_algebra::spatial::{Force, Mat3, Motion, Quat, RigidInertia, Vec3, Xform};
 
 
 // ===============================================================================

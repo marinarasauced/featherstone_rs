@@ -3,9 +3,9 @@
 mod common;
 
 use common::*;
-use robot_algebra::float::Float;
-use robot_algebra::linalg::{Sym3, Sym6};
-use robot_algebra::spatial::{Axis, AxisRotation, AxisX, AxisY, AxisZ, Force, Mat3, Motion, Quat, Rotation, Vec3, Xform};
+use featherstone_algebra::float::Float;
+use featherstone_algebra::linalg::{Sym3, Sym6};
+use featherstone_algebra::spatial::{Axis, AxisRotation, AxisX, AxisY, AxisZ, Force, Mat3, Motion, Quat, Rotation, Vec3, Xform};
 
 /// Random cases per test.
 const TRIALS: usize = 200;

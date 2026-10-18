@@ -1,0 +1,3 @@
+[env]
+# Device artifacts of cuda-oxide (.ll, .ptx) go to target/oxide instead of the workspace root.
+CUDA_OXIDE_PTX_DIR = { value = "target/oxide", relative = true }

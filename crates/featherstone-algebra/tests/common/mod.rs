@@ -1,23 +1,18 @@
-//! Test helpers : a small deterministic random number generator, random spatial quantities, and dense 'f64' matrix operations to compare against.
+//! Test helpers : a small deterministic random number generator, random spatial quantities, and dense `f64` matrix operations to compare against.
 
 #![allow(dead_code)]
 
 use featherstone_algebra::float::Float;
-use featherstone_algebra::linalg::Sym3;
-use featherstone_algebra::spatial::{Force, Mat3, Motion, Quat, RigidInertia, Vec3, Xform};
-
-
-// ===============================================================================
-// Random numbers.
-// -------------------------------------------------------------------------------
-
+use featherstone_algebra::linalg::{Mat3, Sym3, Vec3};
+use featherstone_algebra::rotation::Quat;
+use featherstone_algebra::spatial::{Force, Motion, RigidBodyInertia, Transform};
 
 /// SplitMix64 random number generator : the same sequence for the same seed on every machine.
 pub struct Rng(u64);
 
 impl Rng {
 
-    /// Generator with seed 'seed'.
+    /// Generator with seed `seed`.
     pub fn new(
         seed: u64,
     ) -> Self
@@ -37,7 +32,7 @@ impl Rng {
         z ^ (z >> 31)
     }
 
-    /// Uniform in '[lo, hi)'.
+    /// Uniform in `[lo, hi)`.
     pub fn uniform(
         &mut self,
         lo: f64,
@@ -47,7 +42,7 @@ impl Rng {
         lo + (hi - lo) * (self.next_u64() >> 11) as f64 / (1u64 << 53) as f64
     }
 
-    /// Uniform in '[-scale, scale)', in float type 'T'.
+    /// Uniform in `[-scale, scale)`, in float type `T`.
     pub fn scalar<T: Float>(
         &mut self,
         scale: f64,
@@ -56,7 +51,7 @@ impl Rng {
         T::from_f64(self.uniform(-scale, scale))
     }
 
-    /// Vector with entries uniform in '[-scale, scale)'.
+    /// Vector with entries uniform in `[-scale, scale)`.
     pub fn vec3<T: Float>(
         &mut self,
         scale: f64,
@@ -65,7 +60,7 @@ impl Rng {
         Vec3::new(self.scalar(scale), self.scalar(scale), self.scalar(scale))
     }
 
-    /// Motion vector with entries uniform in '[-scale, scale)'.
+    /// Motion vector with entries uniform in `[-scale, scale)`.
     pub fn motion<T: Float>(
         &mut self,
         scale: f64,
@@ -74,7 +69,7 @@ impl Rng {
         Motion::new(self.vec3(scale), self.vec3(scale))
     }
 
-    /// Force vector with entries uniform in '[-scale, scale)'.
+    /// Force vector with entries uniform in `[-scale, scale)`.
     pub fn force<T: Float>(
         &mut self,
         scale: f64,
@@ -96,24 +91,24 @@ impl Rng {
         &mut self,
     ) -> Mat3<T>
     {
-        self.quat::<T>().to_mat3()
+        self.quat::<T>().to_rotation_matrix()
     }
 
     /// Random transform : random rotation, child origin within 0.5 m.
-    pub fn xform<T: Float>(
+    pub fn transform<T: Float>(
         &mut self,
-    ) -> Xform<T>
+    ) -> Transform<T>
     {
-        Xform {
-            rot: self.rotation(),
-            r: self.vec3(0.5),
+        Transform {
+            rotation: self.rotation(),
+            origin: self.vec3(0.5),
         }
     }
 
-    /// Random physically valid rigid body inertia : mass in '[0.2, 2]' kg, center of mass within 0.2 m, principal moments in '[1e-4, 1e-2]' kg m^2 that satisfy the triangle inequality.
+    /// Random physically valid rigid body inertia : mass in `[0.2, 2]` kg, center of mass within 0.2 m, principal moments in `[1e-4, 1e-2]` kg m^2 that satisfy the triangle inequality.
     pub fn inertia<T: Float>(
         &mut self,
-    ) -> RigidInertia<T>
+    ) -> RigidBodyInertia<T>
     {
         let mass = self.uniform(0.2, 2.0);
         let mut d = [0.0; 3];
@@ -129,20 +124,14 @@ impl Rng {
         let principal = Sym3 { xx: d[0], yy: d[1], zz: d[2], ..Sym3::zero() };
         let i_com = q.mul_mat(&principal.to_mat3()).mul_mat(&q.transpose());
         let com: Vec3<f64> = self.vec3(0.2);
-        RigidInertia::from_com(mass, com, Sym3::from_mat3(&i_com)).cast()
+        RigidBodyInertia::from_com(mass, com, Sym3::from_mat3(&i_com)).cast()
     }
 }
-
-
-// ===============================================================================
-// Dense matrices in f64.
-// -------------------------------------------------------------------------------
-
 
 /// Dense 6x6 matrix.
 pub type M6 = [[f64; 6]; 6];
 
-/// Matrix of any float type as 'f64'.
+/// Matrix of any float type as `f64`.
 pub fn to_f64<T: Float, const R: usize, const C: usize>(
     a: &[[T; C]; R],
 ) -> [[f64; C]; R]
@@ -150,7 +139,7 @@ pub fn to_f64<T: Float, const R: usize, const C: usize>(
     a.map(|row| row.map(|x| x.to_f64()))
 }
 
-/// Array of any float type as 'f64'.
+/// Array of any float type as `f64`.
 pub fn arr<T: Float, const N: usize>(
     a: [T; N],
 ) -> [f64; N]
@@ -158,7 +147,7 @@ pub fn arr<T: Float, const N: usize>(
     a.map(|x| x.to_f64())
 }
 
-/// 'A B'.
+/// `A B`.
 pub fn mat_mul<const N: usize>(
     a: &[[f64; N]; N],
     b: &[[f64; N]; N],
@@ -173,7 +162,7 @@ pub fn mat_mul<const N: usize>(
     out
 }
 
-/// 'A^T'.
+/// `A^T`.
 pub fn transpose<const N: usize>(
     a: &[[f64; N]; N],
 ) -> [[f64; N]; N]
@@ -187,7 +176,7 @@ pub fn transpose<const N: usize>(
     out
 }
 
-/// 'A x'.
+/// `A x`.
 pub fn mat_vec<const N: usize>(
     a: &[[f64; N]; N],
     x: &[f64; N],
@@ -227,7 +216,7 @@ pub fn norm(
     a.iter().map(|x| x * x).sum::<f64>().sqrt()
 }
 
-/// Relative error of 'a' against the reference 'b' : '|a - b| / max(|b|, 1)'.
+/// Relative error of `a` against the reference `b` : `|a - b| / max(|b|, 1)`.
 pub fn rel_err(
     a: &[f64],
     b: &[f64],
@@ -237,7 +226,7 @@ pub fn rel_err(
     norm(&d) / norm(b).max(1.0)
 }
 
-/// Solves 'A x = b' by Gaussian elimination with partial pivoting : an independent reference for the factorizations.
+/// Solves `A x = b` by Gaussian elimination with partial pivoting : an independent reference for the factorizations.
 pub fn dense_solve<const N: usize>(
     a: &[[f64; N]; N],
     b: &[f64; N],
@@ -265,7 +254,7 @@ pub fn dense_solve<const N: usize>(
     x
 }
 
-/// Runs the check 'name::<f64>' and 'name::<f32>' as two tests, each with its tolerance.
+/// Runs the check `name::<f64>` and `name::<f32>` as two tests, each with its tolerance.
 #[macro_export]
 macro_rules! both {
     ($name:ident, $tol64:expr, $tol32:expr) => {

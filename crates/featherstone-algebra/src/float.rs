@@ -1,88 +1,99 @@
-//! The float type of every quantity with 'f32' for GPU usage and 'f64' for validation.
+//! The float type of every quantity with `f32` for GPU usage and `f64` for validation.
 
 use core::fmt::Debug;
-use core::ops::{Add, AddAssign, Div, Mul, MulAssign, Neg, Sub, SubAssign};
+use core::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 
-/// 'f32' or 'f64'.
-pub trait Float:
-    Copy + Debug + Default + PartialEq + PartialOrd + Add<Output = Self> + Sub<Output = Self> + Mul<Output = Self> + Div<Output = Self> + Neg<Output = Self> + AddAssign + SubAssign + MulAssign
+/// Constants and basic operators.
+pub trait Arithmetic:
+    Copy + Add<Output = Self> + AddAssign + Div<Output = Self> + DivAssign + Mul<Output = Self> + DivAssign + Mul<Output = Self> + MulAssign + Neg<Output = Self> + Sub<Output = Self> + SubAssign
 {
-    /// '0.0'
-    const ZERO: Self;
-    /// '1.0'
-    const ONE: Self;
-    /// '2.0'
-    const TWO: Self;
-    /// '0.5'
-    const HALF: Self;
     /// Machine epsilon.
     const EPSILON: Self;
+    /// `0.5`.
+    const HALF: Self;
+    /// `1.0`.
+    const ONE: Self;
+    /// `2.0`.
+    const TWO: Self;
+    /// `0.0`.
+    const ZERO: Self;
 
-    /// Value nearest to 'x'.
-    fn from_f64(x: f64) -> Self;
-    /// Value as 'f64'.
-    fn to_f64(self) -> f64;
-    /// Square root.
-    fn sqrt(self) -> Self;
-    /// '(sin x, cos x)'.
-    fn sin_cos(self) -> (Self, Self);
-    /// 'self * a + b' with one rounding.
-    fn mul_add(self, a: Self, b: Self) -> Self;
     /// Absolute value.
     fn abs(self) -> Self;
-    /// '1.0 / self'.
+    /// Operation : multiply, then add (with one rounding).
+    fn mul_add(self, a: Self, b: Self) -> Self;
+    /// Reciprocal.
     fn recip(self) -> Self;
-    /// 'true' if neither infinite nor NaN.
+    /// Square root.
+    fn sqrt(self) -> Self;
+}
+
+/// Conditionals.
+pub trait Compare:
+    Copy + PartialOrd
+{
+    /// Clamp between min and max.
+    fn clamp(self, min: Self, max: Self) -> Self;
+    /// `true` if `self` is not infinite or nan.
     fn is_finite(self) -> bool;
+    /// Larger of `self` and `other`.
+    fn max(self, other: Self) -> Self;
+    /// Smaller of `self` and `other`.
+    fn min(self, other: Self) -> Self;
+}
+
+/// Conversions between types.
+pub trait Convert:
+    Copy
+{
+    ///Value nearest to `x`.
+    fn from_f64(x: f64) -> Self;
+    /// Value as `f64`.
+    fn to_f64(self) -> f64;
+
+    /// Value nearest to `self` in the float type `U`.
+    #[inline(always)]
+    fn cast<U: Convert>(
+        self,
+    ) -> U
+    {
+        U::from_f64(self.to_f64())
+    }
+}
+
+/// Trigonometric and hyperbolic functions.
+pub trait Trigonometry:
+    Copy
+{
+    /// Sine and cosine of `self`.
+    fn sin_cos(self) -> (Self, Self);
     /// Hyperbolic tangent.
     fn tanh(self) -> Self;
-    /// Larger of 'self' and 'other' ; 'other' when they do not compare.
-    fn max(self, other: Self) -> Self;
-    /// Smaller of 'self' and 'other' ; 'other' when they do not compare.
-    fn min(self, other: Self) -> Self;
-    /// 'self' limited to '[lo, hi]'.
-    fn clamp(self, lo: Self, hi: Self) -> Self;
+}
+
+/// `f32` or `f64`.
+pub trait Float:
+    Arithmetic + Compare + Convert + Debug + Default + Trigonometry
+{
 }
 
 macro_rules! impl_float {
     ($t:ty) => {
-        impl Float for $t {
-            const ZERO: Self = 0.0;
+
+        impl Arithmetic for $t {
+
+            const EPSILON: Self = <$t>::EPSILON;
+            const HALF: Self = 0.5;
             const ONE: Self = 1.0;
             const TWO: Self = 2.0;
-            const HALF: Self = 0.5;
-            const EPSILON: Self = <$t>::EPSILON;
+            const ZERO: Self = 0.0;
 
             #[inline(always)]
-            fn from_f64(
-                x: f64,
-            ) -> Self
-            {
-                x as $t
-            }
-
-            #[inline(always)]
-            fn to_f64(
-                self,
-            ) -> f64
-            {
-                self as f64
-            }
-
-            #[inline(always)]
-            fn sqrt(
+            fn abs(
                 self,
             ) -> Self
             {
-                <$t>::sqrt(self)
-            }
-
-            #[inline(always)]
-            fn sin_cos(
-                self,
-            ) -> (Self, Self)
-            {
-                <$t>::sin_cos(self)
+                <$t>::abs(self)
             }
 
             #[inline(always)]
@@ -96,35 +107,40 @@ macro_rules! impl_float {
             }
 
             #[inline(always)]
-            fn abs(
-                self
-            ) -> Self
-            {
-                <$t>::abs(self)
-            }
-
-            #[inline(always)]
             fn recip(
-                self
+                self,
             ) -> Self
             {
                 1.0 / self
             }
 
             #[inline(always)]
-            fn is_finite(
-                self
-            ) -> bool
-            {
-                <$t>::is_finite(self)
-            }
-
-            #[inline(always)]
-            fn tanh(
+            fn sqrt(
                 self,
             ) -> Self
             {
-                <$t>::tanh(self)
+                <$t>::sqrt(self)
+            }
+        }
+
+        impl Compare for $t {
+
+            #[inline(always)]
+            fn clamp(
+                self,
+                lo: Self,
+                hi: Self,
+            ) -> Self
+            {
+                Compare::min(Compare::max(self, lo), hi)
+            }
+
+            #[inline(always)]
+            fn is_finite(
+                self,
+            ) -> bool
+            {
+                <$t>::is_finite(self)
             }
 
             #[inline(always)]
@@ -144,17 +160,47 @@ macro_rules! impl_float {
             {
                 if self < other { self } else { other }
             }
+        }
+
+        impl Convert for $t {
 
             #[inline(always)]
-            fn clamp(
-                self,
-                lo: Self,
-                hi: Self,
+            fn from_f64(
+                x: f64,
             ) -> Self
             {
-                Float::min(Float::max(self, lo), hi)
+                x as $t
+            }
+
+            #[inline(always)]
+            fn to_f64(
+                self,
+            ) -> f64
+            {
+                self as f64
             }
         }
+
+        impl Trigonometry for $t {
+
+            #[inline(always)]
+            fn sin_cos(
+                self,
+            ) -> (Self, Self)
+            {
+                <$t>::sin_cos(self)
+            }
+
+            #[inline(always)]
+            fn tanh(
+                self,
+            ) -> Self
+            {
+                <$t>::tanh(self)
+            }
+        }
+
+        impl Float for $t {}
     };
 }
 

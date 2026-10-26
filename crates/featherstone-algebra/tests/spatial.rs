@@ -5,8 +5,8 @@ mod common;
 use common::*;
 use featherstone_algebra::float::Float;
 use featherstone_algebra::linalg::{Mat3, Vec3};
-use featherstone_algebra::rotation::{AxisRotation, AxisY};
-use featherstone_algebra::spatial::{Force, Motion, Transform};
+use featherstone_algebra::rotation::{Axis, AxisRotation, AxisX, AxisY, AxisZ};
+use featherstone_algebra::spatial::{Force, Motion, RigidBodyInertia, Transform};
 
 /// Random cases per test.
 const TRIALS: usize = 200;
@@ -141,6 +141,31 @@ fn inertia_transforms_match_the_explicit_6x6_matrices<T: Float>(
     }
 }
 crate::both!(inertia_transforms_match_the_explicit_6x6_matrices, 1e-14, 2e-6);
+
+/// The product of an inertia with the axis of a revolute joint against the column `k` of the explicit 6x6 matrix `I`, because `S = [e_k; 0]` selects that column.
+fn inertia_times_an_axis_is_a_column_of_the_6x6_matrix<T: Float>(
+    tol: f64,
+)
+{
+    fn check<T: Float, A: Axis>(
+        inertia: &RigidBodyInertia<T>,
+        tol: f64,
+    )
+    {
+        let dense = to_f64(&inertia.to_dense());
+        let want: [f64; 6] = std::array::from_fn(|i| dense[i][A::INDEX]);
+        let got = arr(inertia.mul_axis::<A>().to_array());
+        assert_close("I S", max_abs_diff(&got, &want), tol);
+    }
+    let mut rng = Rng::new(4);
+    for _ in 0..TRIALS {
+        let inertia = rng.inertia::<T>();
+        check::<T, AxisX>(&inertia, tol);
+        check::<T, AxisY>(&inertia, tol);
+        check::<T, AxisZ>(&inertia, tol);
+    }
+}
+crate::both!(inertia_times_an_axis_is_a_column_of_the_6x6_matrix, 1e-14, 2e-6);
 
 /// Motion and force cross products against `crm` and `crf = -crm^T`, and the force at a point.
 fn cross_products_match_crm_and_crf<T: Float>(

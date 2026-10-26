@@ -8,7 +8,7 @@
 
 use crate::float::Float;
 use crate::linalg::{Mat3, Sym3, Sym6, Vec3};
-use crate::rotation::{AxisRotation, Rotation};
+use crate::rotation::{Axis, AxisRotation, Rotation};
 
 /// Spatial motion vector `[w; v]`, a velocity or an acceleration.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
@@ -167,6 +167,17 @@ impl<T: Float> RigidBodyInertia<T> {
     ) -> Vec3<T>
     {
         self.first_moment * self.mass.recip()
+    }
+
+    /// Product `I S` of the inertia and the motion subspace `S = [e_k; 0]` of a revolute joint about the axis `A` : the spatial momentum of the body at a unit joint rate.
+    ///
+    /// It is the column `I^c S` of the composite rigid body method (RBDA Chapter 6) and the column `k` of [`to_dense`](Self::to_dense).
+    #[inline(always)]
+    pub fn mul_axis<A: Axis>(
+        &self,
+    ) -> Force<T>
+    {
+        Force::new(A::symmetric_column(&self.rotational), -A::cross_axis(self.first_moment))
     }
 
     /// Product `I m` of this inertia with a motion vector `m`.
